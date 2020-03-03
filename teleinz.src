@@ -1,0 +1,137 @@
+&ACCESS RVP
+&REL 99
+&PARAM SensorITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+&PARAM DISKPATH = KRC:\R1\ethkrl
+DEF Teleinz( )
+;FOLD Declaration
+INT i
+INT OFFSET
+DECL EKI_STATUS RET
+CHAR Bytes[25]
+INT valueInt
+REAL valueRealx
+REAL valueRealy
+REAL valueRealz
+
+REAL valueReala
+REAL valueRealb
+REAL valueRealc
+BOOL chwytak
+BOOL valueBool
+BOOL petla
+CHAR valueChar[1]
+E6POS PUNKT
+;ENDFOLD
+;FOLD INI
+  ;FOLD BASISTECH INI
+    BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+;FOLD Initialize sample data
+
+ FOR i=(1) TO (25)  
+  Bytes[i]=0
+ ENDFOR  
+ OFFSET=0
+ valueInt=0
+ chwytak=FALSE
+ valueBool=TRUE
+
+ petla=FALSE
+
+ valueRealx=0
+ valueRealy=0
+ valueRealz=0
+ valueReala=0
+ valueRealb=0
+ valueRealc=0
+ valueChar[1]=0
+;ENDFOLD
+RET=EKI_Init("teleinzsmk")
+RET=EKI_Open("teleinzsmk")
+EKI_CHECK(RET,#QUIT)
+
+
+OFFSET=0
+
+
+;FOLD PTP P4 CONT Vel=100 % PDAT4 Tool[2]:chwytak Base[2]:niebieski;%{PE}%R 8.3.34,%MKUKATPBASIS,%CMOVE,%VPTP,%P 1:PTP, 2:P4, 3:C_DIS, 5:100, 7:PDAT4
+$BWDSTART=FALSE
+PDAT_ACT=PPDAT4
+FDAT_ACT=FP4
+BAS(#PTP_PARAMS,100)
+PTP XP4 C_DIS
+;ENDFOLD
+
+SKOK:
+
+
+WAIT FOR $FLAG[10]
+RET=EKI_GetString("teleinzsmk","Buffer",Bytes[])
+$FLAG[10]=FALSE
+
+OFFSET=0
+CAST_FROM(Bytes[],OFFSET,valueRealx,valueRealy,valueRealz, valueReala, valueRealb, valueRealc,chwytak)
+;FOLD cosg
+xp1.x=valueRealx
+xp1.y=valueRealy
+xp1.z=valueRealz
+xp1.a=valueReala
+xp1.b=valueRealb
+xp1.c=valueRealc
+;endfold
+
+
+;FOLD LIN p1 Vel=2 m/s CPDAT1 Tool[8]:SPisak Base[31]:inzynier;%{PE}%R 8.3.34,%MKUKATPBASIS,%CMOVE,%VLIN,%P 1:LIN, 2:p1, 3:, 5:2, 7:CPDAT1
+$BWDSTART=FALSE
+LDAT_ACT=LCPDAT1
+FDAT_ACT=Fp1
+BAS(#CP_PARAMS,2)
+LIN Xp1 
+;ENDFOLD
+
+
+WHILE petla==FALSE
+PUNKT = $POS_ACT
+IF PUNKT.x==xp1.x THEN
+petla=TRUE
+IF chwytak==TRUE THEN
+
+;FOLD PULSE 3'' State=TRUE CONT Time=0.1 sec;%{PE}%R 8.3.34,%MKUKATPBASIS,%COUT,%VPULSE,%P 2:3, 3:, 5:TRUE, 6:CONTINUE, 8:0.1
+CONTINUE
+PULSE($OUT[3], TRUE,0.1)
+;ENDFOLD
+ELSE
+
+
+;FOLD PULSE 6'' State=TRUE CONT Time=0.1 sec;%{PE}%R 8.3.34,%MKUKATPBASIS,%COUT,%VPULSE,%P 2:6, 3:, 5:TRUE, 6:CONTINUE, 8:0.1
+CONTINUE
+PULSE($OUT[6], TRUE,0.1)
+;ENDFOLD
+ENDIF
+ENDIF
+ENDWHILE
+petla=FALSE
+
+
+OFFSET=0
+CAST_TO(Bytes[],OFFSET,PUNKT.x,PUNKT.y,PUNKT.z,PUNKT.a,PUNKT.b,PUNKT.c,TRUE)
+Bytes[]="1111111111111111672111111"
+RET = EKI_Send("teleinzsmk",Bytes[])
+
+
+
+IF valueBool == TRUE THEN
+	GOTO SKOK
+ENDIF
+
+
+RET=EKI_Close("teleinzsmk")
+RET=EKI_Clear("teleinzsmk")
+END
